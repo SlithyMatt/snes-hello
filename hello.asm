@@ -44,12 +44,20 @@ start:
    lda #$0F
    sta INIDISP
 
+   ; enable NMI for Vertical Blank
+   lda #$80
+   sta NMITIMEN
+
 game_loop:
+   wai ; Pause until next interrupt complete (i.e. V-blank processing is done)
+   ; Do something
    jmp game_loop
 
 
 
 nmi:
+   ; Do stuff that needs to be done during V-Blank
+   lda RDNMI ; reset NMI flag
 irq:
    rti
 
