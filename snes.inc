@@ -1,3 +1,6 @@
+.ifndef SNES_INC
+SNES_INC = 1
+
 ; Address Bus B Registers
 INIDISP     =   $2100   ;   Screen Display Register   single   write   any time
 OBSEL       =   $2101   ;   Object Size and Character Size Register   single   write   f-blank, v-blank
@@ -120,3 +123,5 @@ DASBx       =   $4307   ;   HDMA Indirect Address Registers
 A2AxL       =   $4308   ;   HDMA Mid Frame Table Address Registers (Low)
 A2AxH       =   $4309   ;   HDMA Mid Frame Table Address Registers (High)
 NTLRx       =   $430A   ;   HDMA Line Counter Register
+
+.endif

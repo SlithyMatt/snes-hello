@@ -8,6 +8,7 @@
 .a8     ; A is 8 bits
 
 .include "snes.inc"
+.include "charmap.inc"
 
 .segment "HEADER"        ; +$7FE0 in file
 .byte "CA65 EXAMPLE" ; ROM name
@@ -22,11 +23,14 @@
 .segment "CODE"
    jmp start
 
-VRAM_CHARSET = $0000 ; must be at $1000 boundary
-VRAM_TILEMAP = $1000 ; must be at $0400 boundary
+VRAM_CHARSET   = $0000 ; must be at $1000 boundary
+VRAM_BG1       = $1000 ; must be at $0400 boundary
+VRAM_BG2       = $1400 ; must be at $0400 boundary
+VRAM_BG3       = $1800 ; must be at $0400 boundary
+VRAM_BG4       = $1C00 ; must be at $0400 boundary
 START_X        = 9
 START_Y        = 14
-START_TM_ADDR  = VRAM_TILEMAP + (32*START_Y + START_X)*2
+START_TM_ADDR  = VRAM_BG1 + 32*START_Y + START_X
 
 hello_str: .asciiz "Hello, World!"
 
@@ -48,20 +52,33 @@ start:
    stz CGADD ; start with color 0 (background)
    stz CGDATA ; None more black
    stz CGDATA
-   stz CGDATA ; Color 1: dark red
-   lda #$10
+   lda #$10 ; Color 1: dark red
    sta CGDATA
-   stz CGDATA ; Color 2: neutral red
-   lda #$1F
+   stz CGDATA
+   lda #$1F ; Color 2: neutral red
    sta CGDATA
-   lda #$42 ; Color 3: light red
+   stz CGDATA
+   lda #$1F  ; Color 3: light red
    sta CGDATA
-   lda #$1F
+   lda #$42
    sta CGDATA
 
    ; Maximum screen brightness
    lda #$0F
    sta INIDISP
+
+   ; Setup Graphics Mode 0, 8x8 tiles all layers
+   stz BGMODE
+   lda #>VRAM_BG1
+   sta BG1SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
+   lda #>VRAM_BG2
+   sta BG2SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
+   lda #>VRAM_BG3
+   sta BG3SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
+   lda #>VRAM_BG4
+   sta BG4SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
+   lda #((>VRAM_CHARSET >> 4) | (>VRAM_CHARSET & $F0))
+   sta BG12NBA ; BG 1 and 2 both use char tiles
 
    ; Load character set into VRAM
    lda #$80
@@ -70,18 +87,12 @@ start:
    stx VMADDL
    ldx #0
 @charset_loop:
-   lda NESFont,x
+   lda NESfont,x
    sta VMDATAL
    sta VMDATAH
    inx
    cpx #(128*8)
    bne @charset_loop
-
-   ; Setup Graphics Mode 0, 8x8 tiles all layers
-   lda #>VRAM_TILEMAP
-   sta BG1SC ; BG 1 at VRAM_TILEMAP, only single 32x32 map (4-way mirror)
-   lda #((>VRAM_CHARSET >> 4) | (>VRAM_CHARSET & $F0))
-   sta BG12NBA ; BG 1 and 2 both use char tiles
 
    ; Place string tiles in background
    ldx #START_TM_ADDR
@@ -91,7 +102,8 @@ start:
    lda hello_str,x
    beq @enable_nmi
    sta VMDATAL
-   stz VMDATAH
+   lda #$20 ; priority 1
+   sta VMDATAH
    inx
    bra @string_loop
 
@@ -107,12 +119,16 @@ game_loop:
 
 
 nmi:
+   rep #$10        ; X/Y 16-bit
+   sep #$20        ; A 8-bit
+   pha
    ; Do stuff that needs to be done during V-Blank
    lda RDNMI ; reset NMI flag
+   pla
 irq:
    rti
 
-.include
+.include "charset.asm"
 
 .segment "VECTORS"
 .word 0, 0, 0, 0, 0, 0, 0, 0
