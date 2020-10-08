@@ -31,6 +31,7 @@ VRAM_BG4       = $1C00 ; must be at $0400 boundary
 START_X        = 9
 START_Y        = 14
 START_TM_ADDR  = VRAM_BG1 + 32*START_Y + START_X
+TICK_TM_ADDR   = VRAM_BG1 + 32*(START_Y+1) + START_X
 
 hello_str: .asciiz "Hello, World!"
 
@@ -63,20 +64,10 @@ start:
    lda #$42
    sta CGDATA
 
-   ; Maximum screen brightness
-   lda #$0F
-   sta INIDISP
-
    ; Setup Graphics Mode 0, 8x8 tiles all layers
    stz BGMODE
    lda #>VRAM_BG1
-   sta BG1SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
-   lda #>VRAM_BG2
-   sta BG2SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
-   lda #>VRAM_BG3
-   sta BG3SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
-   lda #>VRAM_BG4
-   sta BG4SC ; BG 1 at VRAM_BG1, only single 32x32 map (4-way mirror)
+   sta BG1SC ; BG1 at VRAM_BG1, only single 32x32 map (4-way mirror)
    lda #((>VRAM_CHARSET >> 4) | (>VRAM_CHARSET & $F0))
    sta BG12NBA ; BG 1 and 2 both use char tiles
 
@@ -88,7 +79,7 @@ start:
    ldx #0
 @charset_loop:
    lda NESfont,x
-   sta VMDATAL
+   stz VMDATAL
    sta VMDATAH
    inx
    cpx #(128*8)
@@ -100,21 +91,40 @@ start:
    ldx #0
 @string_loop:
    lda hello_str,x
-   beq @enable_nmi
+   beq @enable_display
    sta VMDATAL
    lda #$20 ; priority 1
    sta VMDATAH
    inx
    bra @string_loop
 
-@enable_nmi:
+@enable_display:
+   ; Show BG1
+   lda #$01
+   sta TM
+   ; Maximum screen brightness
+   lda #$0F
+   sta INIDISP
+
    ; enable NMI for Vertical Blank
    lda #$80
    sta NMITIMEN
 
+   stz $00
+
 game_loop:
    wai ; Pause until next interrupt complete (i.e. V-blank processing is done)
    ; Do something
+   inc $00
+   ldx #TICK_TM_ADDR
+   stx VMADDL
+   lda $00
+   and #$0F
+   ora #$30
+   sta VMDATAL
+   lda #$20 ; priority 1
+   sta VMDATAH
+
    jmp game_loop
 
 
@@ -122,8 +132,12 @@ nmi:
    rep #$10        ; X/Y 16-bit
    sep #$20        ; A 8-bit
    pha
+   phx
+   phy
    ; Do stuff that needs to be done during V-Blank
    lda RDNMI ; reset NMI flag
+   ply
+   plx
    pla
 irq:
    rti
