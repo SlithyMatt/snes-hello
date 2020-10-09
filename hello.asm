@@ -10,10 +10,10 @@
 .include "snes.inc"
 .include "charmap.inc"
 
-.segment "HEADER"        ; +$7FE0 in file
+.segment "HEADER"    ; +$7FE0 in file
 .byte "CA65 EXAMPLE" ; ROM name
 
-.segment "ROMINFO"       ; +$7FD5 in file
+.segment "ROMINFO"   ; +$7FD5 in file
 .byte $30            ; LoROM, fast-capable
 .byte 0              ; no battery RAM
 .byte $07            ; 128K ROM
@@ -79,8 +79,8 @@ start:
    ldx #0
 @charset_loop:
    lda NESfont,x
-   stz VMDATAL
-   sta VMDATAH
+   stz VMDATAL ; color index low bit = 0
+   sta VMDATAH ; color index high bit set -> neutral red (2)
    inx
    cpx #(128*8)
    bne @charset_loop
@@ -110,27 +110,16 @@ start:
    lda #$80
    sta NMITIMEN
 
-   stz $00
-
 game_loop:
    wai ; Pause until next interrupt complete (i.e. V-blank processing is done)
    ; Do something
-   inc $00
-   ldx #TICK_TM_ADDR
-   stx VMADDL
-   lda $00
-   and #$0F
-   ora #$30
-   sta VMDATAL
-   lda #$20 ; priority 1
-   sta VMDATAH
-
    jmp game_loop
 
 
 nmi:
    rep #$10        ; X/Y 16-bit
    sep #$20        ; A 8-bit
+   phd
    pha
    phx
    phy
@@ -139,14 +128,25 @@ nmi:
    ply
    plx
    pla
-irq:
+   pld
+return_int:
    rti
 
 .include "charset.asm"
 
 .segment "VECTORS"
-.word 0, 0, 0, 0, 0, 0, 0, 0
-.word 0, 0, 0, 0, 0
-.word nmi   ; NMI
-.word start ; Reset
-.word irq   ; IRQ
+.word 0, 0        ;Native mode vectors
+.word return_int  ;COP
+.word return_int  ;BRK
+.word return_int  ;ABORT
+.word nmi         ;NMI
+.word start       ;RST
+.word return_int  ;IRQ
+
+.word 0, 0        ;Emulation mode vectors
+.word return_int  ;COP
+.word 0
+.word return_int  ;ABORT
+.word nmi         ;NMI
+.word start       ;RST
+.word return_int  ;IRQ
