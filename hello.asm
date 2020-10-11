@@ -1,7 +1,4 @@
 ; Minimal example of using ca65 to build SNES ROM.
-;
-; ca65 ca65.s
-; ld65 -C lorom128.cfg -o ca65.smc ca65.o
 
 .p816   ; 65816 processor
 .i16    ; X/Y are 16 bits
@@ -31,7 +28,6 @@ VRAM_BG4       = $1C00 ; must be at $0400 boundary
 START_X        = 9
 START_Y        = 14
 START_TM_ADDR  = VRAM_BG1 + 32*START_Y + START_X
-TICK_TM_ADDR   = VRAM_BG1 + 32*(START_Y+1) + START_X
 
 hello_str: .asciiz "Hello, World!"
 
