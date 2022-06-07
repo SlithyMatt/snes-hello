@@ -39,6 +39,9 @@ start:
 
    ; Clear registers
    ldx #$33
+
+   jsr ClearVRAM
+
 @loop:
    stz INIDISP,x
    stz NMITIMEN,x
@@ -130,6 +133,43 @@ nmi:
    pld
 return_int:
    rti
+
+;----------------------------------------------------------------------------
+; ClearVRAM -- Sets every byte of VRAM to zero
+; from bazz's VRAM tutorial
+; In: None
+; Out: None
+; Modifies: flags
+;----------------------------------------------------------------------------
+ClearVRAM:
+   pha
+   phx
+   php
+
+   REP #$30		; mem/A = 8 bit, X/Y = 16 bit
+   SEP #$20
+
+   LDA #$80
+   STA $2115         ;Set VRAM port to word access
+   LDX #$1809
+   STX $4300         ;Set DMA mode to fixed source, WORD to $2118/9
+   LDX #$0000
+   STX $2116         ;Set VRAM port address to $0000
+   STX $0000         ;Set $00:0000 to $0000 (assumes scratchpad ram)
+   STX $4302         ;Set source address to $xx:0000
+   LDA #$00
+   STA $4304         ;Set source bank to $00
+   LDX #$FFFF
+   STX $4305         ;Set transfer size to 64k-1 bytes
+   LDA #$01
+   STA $420B         ;Initiate transfer
+
+   STZ $2119         ;clear the last byte of the VRAM
+
+   plp
+   plx
+   pla
+   RTS
 
 .include "charset.asm"
 
